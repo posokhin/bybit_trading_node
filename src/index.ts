@@ -92,6 +92,7 @@ const main = async ({ apiKey, apiSecret, coin, USDTValue }: MainOptions) => {
           const order = await ws.createOrder(orderRequest);
           logger.info(order);
         } catch (error) {
+          isOrderCreated = false;
           logger.error(error);
         }
       }
