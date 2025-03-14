@@ -2,36 +2,9 @@ import { OrderParamsV5 } from "bybit-api";
 import { WsOrderbook } from "./types/Ws";
 import BybitWsClient from "./utils/BybitWsClient";
 import winston from "winston";
-import readline from "readline";
 import { TradingUtils } from "./utils/TradingUtils";
-
-const r = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
-const quest = async () => {
-  let apiKey: string;
-  let apiSecret: string;
-  let coin: string;
-  let USDTValue: number;
-  r.question("Enter your API key: ", (key) => {
-    apiKey = key;
-    r.question("Enter your API secret: ", (secret) => {
-      apiSecret = secret;
-      r.question("Enter the coin you want to trade: ", (coinName) => {
-        coin = coinName;
-        r.question("Enter the USDT value: ", (value) => {
-          USDTValue = Number(value);
-          r.close();
-        });
-      });
-    });
-  });
-  r.on("close", () => {
-    main({ apiKey, apiSecret, coin, USDTValue });
-  });
-};
+import { getUserInput } from "./utils/common";
+import { MainOptions } from "./types/common";
 
 const logger = winston.createLogger({
   level: "info",
@@ -46,11 +19,12 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-type MainOptions = {
-  apiKey: string;
-  apiSecret: string;
-  coin: string;
-  USDTValue: number;
+const quest = async () => {
+  const apiKey = await getUserInput("API key");
+  const apiSecret = await getUserInput("API secret");
+  const coin = await getUserInput("coin");
+  const USDTValue = await getUserInput("USDT value");
+  main({ apiKey, apiSecret, coin, USDTValue: Number(USDTValue) });
 };
 
 const main = async ({ apiKey, apiSecret, coin, USDTValue }: MainOptions) => {
