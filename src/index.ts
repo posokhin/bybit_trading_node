@@ -47,7 +47,7 @@ const main = async ({ apiKey, apiSecret, coin, USDTValue }: MainOptions) => {
         logger.info(orderbook);
         const askPrice = orderbook.a[0][0];
 
-        const price = TradingUtils.getPriceString(askPrice, 1.01);
+        const price = TradingUtils.getPriceString(askPrice, 1.05);
         const qty = TradingUtils.getQuantityString(USDTValue, +price);
         try {
           if (isOrderCreated) {
