@@ -4,20 +4,18 @@ export class TradingUtils {
     private constructor() {}
 
     private static numMulValue(numStr: string, value: number): string {
-        if (
-            !numStr.trim().length ||
-            Number(numStr) <= 0 ||
-            Number.isNaN(Number(numStr))
-        ) {
+        const toNumber = Number(numStr.trim());
+        if (isNaN(toNumber) || toNumber <= 0) {
             throw new Error("Invalid numStr");
         }
         const num = Decimal(numStr);
         const multiplied = num.mul(value);
 
-        const numSignAfterDot = this.getSignLengthAfterDot(numStr);
+        const precision = this.getPrecision(numStr);
 
-        let result = multiplied.toFixed(numSignAfterDot, Decimal.ROUND_FLOOR);
+        let result = multiplied.toFixed(precision, Decimal.ROUND_FLOOR);
 
+        // если округление не произошло, то добавляем 1 к последнему символу
         if (result === numStr) {
             let lastDigit = Number(result.charAt(result.length - 1));
             lastDigit++;
@@ -25,10 +23,6 @@ export class TradingUtils {
         }
 
         return result;
-    }
-
-    static getTriggerPrice(bid: string): string {
-        return this.numMulValue(bid, 1.1);
     }
 
     static getPriceString(price: string, mulValue: number = 1.01): string {
@@ -45,10 +39,8 @@ export class TradingUtils {
             : Decimal(qty).toFixed(2, Decimal.ROUND_FLOOR);
     }
 
-    static getSignLengthAfterDot(str: string): number {
-        if (!str.includes(".")) {
-            return 0;
-        }
-        return str.split(".")?.[1]?.length ?? 0;
+    static getPrecision(str: string): number {
+        const precision = str.split(".")[1];
+        return precision ? precision.length : 0;
     }
 }

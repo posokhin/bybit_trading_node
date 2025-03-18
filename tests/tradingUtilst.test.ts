@@ -47,5 +47,26 @@ describe("TradingUtils", () => {
                 "0.000000001439",
             );
         });
+        it("0.1", () => {
+            expect(TradingUtils.getPriceString("0.1", 1.01)).toBe("0.2");
+            expect(TradingUtils.getPriceString("0.1", 1.05)).toBe("0.2");
+            expect(TradingUtils.getPriceString("0.1", 1.1)).toBe("0.2");
+        });
+        it("1", () => {
+            expect(TradingUtils.getPriceString("1", 1.01)).toBe("2");
+            expect(TradingUtils.getPriceString("1", 1.05)).toBe("2");
+            expect(TradingUtils.getPriceString("1", 1.1)).toBe("2");
+        });
+        it("10", () => {
+            expect(TradingUtils.getPriceString("10", 1.01)).toBe("11");
+            expect(TradingUtils.getPriceString("10", 1.05)).toBe("11");
+            expect(TradingUtils.getPriceString("10", 1.1)).toBe("11");
+        });
+        it("0.04", () => {
+            expect(TradingUtils.getPriceString("0.04", 1.01)).toBe("0.05");
+            expect(TradingUtils.getPriceString("0.04", 1.05)).toBe("0.05");
+            expect(TradingUtils.getPriceString("0.04", 1.1)).toBe("0.05");
+            expect(TradingUtils.getPriceString("0.04", 1.5)).toBe("0.06");
+        });
     });
 });
