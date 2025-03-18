@@ -52,29 +52,36 @@ const main = async ({
     ws.connectWSAPI();
 
     let isOrderCreated = false;
+    let orderRequest: OrderParamsV5 = {
+        symbol: pair,
+        side: "Buy",
+        price: "0",
+        category: "spot",
+        orderType: "Limit",
+        qty: "0",
+    };
+
+    ws.on("open", async () => {
+        logger.info("Connected to Bybit WS API");
+    });
 
     ws.on("update", async (data) => {
         if (data.topic.startsWith("orderbook")) {
             const orderbook = data?.data as WsOrderbook;
             if (orderbook.a.length) {
                 logger.info(orderbook);
-                const askPrice = orderbook.a[0][0];
-
-                const price = TradingUtils.getPriceString(askPrice, multiplier);
+                const price = TradingUtils.getPriceString(
+                    orderbook.a[0][0],
+                    multiplier,
+                );
                 const qty = TradingUtils.getQuantityString(USDTValue, +price);
                 try {
                     if (isOrderCreated) {
                         return;
                     }
                     isOrderCreated = true;
-                    const orderRequest = {
-                        symbol: pair,
-                        side: "Buy",
-                        price: price,
-                        category: "spot",
-                        orderType: "Limit",
-                        qty: qty,
-                    } as OrderParamsV5;
+                    orderRequest.price = price;
+                    orderRequest.qty = qty;
                     logger.info(orderRequest);
                     const order = await ws.createOrder(orderRequest);
                     logger.info(order);
@@ -86,8 +93,8 @@ const main = async ({
         }
     });
 
-    ws.on("open", async () => {
-        logger.info("Connected to Bybit WS API");
+    ws.on("close", () => {
+        logger.info("WebSocket connection closed.");
     });
 };
 
