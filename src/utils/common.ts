@@ -18,3 +18,5 @@ export const getUserInput = async (field: string): Promise<string> => {
     }
     return key;
 };
+
+export const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
