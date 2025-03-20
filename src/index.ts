@@ -8,7 +8,7 @@ import { TradingUtils } from "./utils/TradingUtils";
 
 let isOrderCreated = false;
 let askPrice: string | null = null;
-let orderRequest: OrderParamsV5 = {
+const orderRequest: OrderParamsV5 = {
     symbol: "",
     side: "Buy",
     price: "0",
@@ -17,7 +17,6 @@ let orderRequest: OrderParamsV5 = {
     qty: "0",
 };
 let startHour = 0;
-let startMinute = 0;
 let ws: BybitWsClient;
 
 const logger = winston.createLogger({
@@ -38,7 +37,6 @@ const quest = async () => {
     const apiSecret = await getUserInput("API secret");
     const coin = await getUserInput("Coin");
     startHour = Number(await getUserInput("Start hour"));
-    startMinute = Number(await getUserInput("Start minute"));
     const USDTValue = await getUserInput("USDT value");
     const multiplier = await getUserInput("Multiplier");
     main({
@@ -59,6 +57,7 @@ const main = async ({
 }: MainOptions) => {
     const pair = coin.toUpperCase() + "USDT";
     const orderbookTopic = `orderbook.1.${pair}`;
+    orderRequest.symbol = pair;
 
     ws = new BybitWsClient({
         key: apiKey,
@@ -79,12 +78,8 @@ const main = async ({
             if (orderbook.a.length) {
                 logger.info(orderbook);
                 askPrice = orderbook.a[0][0];
-                const price = TradingUtils.getPriceString(
-                    orderbook.a[0][0],
-                    multiplier,
-                );
+                const price = TradingUtils.getPriceString(askPrice, multiplier);
                 const qty = TradingUtils.getQuantityString(USDTValue, +price);
-                orderRequest.symbol = pair;
                 orderRequest.price = price;
                 orderRequest.qty = qty;
                 waitForListingTime();
@@ -102,9 +97,9 @@ const waitForListingTime = () => {
     const startTime = Date.UTC(
         now.getFullYear(),
         now.getMonth(),
-        20,
+        now.getDate(),
         startHour,
-        startMinute,
+        0,
         0,
         0,
     ).valueOf();
@@ -120,9 +115,6 @@ const waitForListingTime = () => {
 const startTrading = async () => {
     while (!isOrderCreated) {
         try {
-            if (isOrderCreated) {
-                return;
-            }
             logger.info(orderRequest);
             const order = await ws.createOrder(orderRequest);
             isOrderCreated = true;
