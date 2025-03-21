@@ -6,8 +6,11 @@ import { delay, getUserInput } from "./utils/common";
 import { MainOptions } from "./types/common";
 import { TradingUtils } from "./utils/TradingUtils";
 
-let isOrderCreated = false;
+const today = new Date();
+let listingTime = 0;
+
 let askPrice: string | null = null;
+let isOrderCreated = false;
 const orderRequest: OrderParamsV5 = {
     symbol: "",
     side: "Buy",
@@ -16,7 +19,7 @@ const orderRequest: OrderParamsV5 = {
     orderType: "Limit",
     qty: "0",
 };
-let startHour = 0;
+
 let ws: BybitWsClient;
 
 const logger = winston.createLogger({
@@ -35,18 +38,30 @@ const logger = winston.createLogger({
 const quest = async () => {
     const apiKey = await getUserInput("API key");
     const apiSecret = await getUserInput("API secret");
-    const coin = await getUserInput("Coin");
-    startHour = Number(await getUserInput("Start hour"));
-    const USDTValue = await getUserInput("USDT value");
-    const multiplier = await getUserInput("Multiplier");
+    const coin = await getUserInput("coin");
+    const USDTValue = Number(await getUserInput("USDT value"));
+    const multiplier = Number(await getUserInput("multiplier"));
+    const startHour = Number(await getUserInput("start hour (UTC)"));
+    listingTime = Date.UTC(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+        startHour,
+        0,
+        0,
+        0,
+    );
+    logger.info(`Listing time is ${new Date(listingTime).toISOString()}`);
     main({
         apiKey,
         apiSecret,
         coin,
-        USDTValue: Number(USDTValue),
-        multiplier: Number(multiplier),
+        USDTValue,
+        multiplier,
     });
 };
+
+const isListingInProgress = () => Date.now() - listingTime >= 0;
 
 const main = async ({
     apiKey,
@@ -64,52 +79,46 @@ const main = async ({
         secret: apiSecret,
     });
     ws.subscribeV5(orderbookTopic, "spot");
-    ws.connectWSAPI();
+    await ws.connectWSAPI();
 
-    ws.on("open", async () => {
+    ws.on("open", () => {
         logger.info("Connected to Bybit WS API");
     });
 
     ws.on("update", async (data) => {
-        if (askPrice) return;
+        if (askPrice && isListingInProgress()) {
+            return;
+        }
+        if (!data.topic.startsWith("orderbook")) {
+            return;
+        }
 
-        if (data.topic.startsWith("orderbook")) {
-            const orderbook = data?.data as WsOrderbook;
-            if (orderbook.a.length) {
-                logger.info(orderbook);
-                askPrice = orderbook.a[0][0];
-                const price = TradingUtils.getPriceString(askPrice, multiplier);
-                const qty = TradingUtils.getQuantityString(USDTValue, +price);
-                orderRequest.price = price;
-                orderRequest.qty = qty;
-                waitForListingTime();
-            }
+        const orderbook: WsOrderbook = data?.data;
+        if (orderbook.a.length) {
+            askPrice = orderbook.a[0][0];
+            logger.info(orderbook);
+            const price = TradingUtils.getPriceString(askPrice, multiplier);
+            const qty = TradingUtils.getQuantityString(USDTValue, +price);
+            orderRequest.price = price;
+            orderRequest.qty = qty;
         }
     });
 
     ws.on("close", () => {
         logger.info("WebSocket connection closed.");
     });
+
+    waitForListingTime();
 };
 
 const waitForListingTime = () => {
-    const now = new Date();
-    const startTime = Date.UTC(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        startHour,
-        0,
-        0,
-        0,
-    ).valueOf();
-
-    while (true) {
-        if (Date.now() - startTime > 0) {
+    const interval = setInterval(() => {
+        if (isListingInProgress()) {
+            if (!askPrice) return;
+            clearInterval(interval);
             startTrading();
-            break;
         }
-    }
+    }, 1);
 };
 
 const startTrading = async () => {
@@ -122,7 +131,7 @@ const startTrading = async () => {
         } catch (error) {
             logger.error(error);
         } finally {
-            await delay(25);
+            await delay(50);
         }
     }
 };
